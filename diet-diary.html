@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="食事ダイアリー">
+<title>食事ダイアリー</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; background: #f7f8fc; min-height: 100vh; padding-bottom: 80px; }
+
+.header { background: #2d6a4f; color: #fff; padding: 16px 16px 12px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 20; }
+.app-title { font-size: 19px; font-weight: 700; }
+.app-sub { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+.add-btn { background: #52b788; color: #fff; border: none; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+/* Tabs */
+.tabs { display: flex; background: #1b4332; position: sticky; top: 60px; z-index: 19; }
+.tab { flex: 1; padding: 10px 0; text-align: center; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+.tab.active { color: #fff; border-bottom-color: #52b788; }
+
+.rules-row { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 14px; background: #e9f5ee; border-bottom: 1px solid #c7e8d4; }
+.rule { font-size: 10px; background: #fff; border: 1px solid #b7dfc8; border-radius: 20px; padding: 2px 8px; color: #2d6a4f; font-weight: 600; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* ===== DAY VIEW ===== */
+.list { padding: 12px 12px 0; }
+.card { background: #fff; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
+.card-summary { padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.date-label { font-size: 15px; font-weight: 700; color: #1b4332; }
+.summary-right { display: flex; align-items: center; gap: 8px; }
+.total-kcal { font-size: 14px; font-weight: 700; color: #2d6a4f; }
+.badge { font-size: 10px; border-radius: 10px; padding: 2px 8px; font-weight: 600; }
+.badge-ok { background: #e9f5ee; color: #2d6a4f; }
+.badge-warn { background: #fff8e1; color: #b07000; }
+.badge-over { background: #fdecea; color: #c0392b; }
+.chevron { font-size: 11px; color: #aaa; transition: transform 0.2s; }
+.chevron.open { transform: rotate(180deg); }
+
+.bar-wrap { height: 5px; background: #eee; margin: 0 14px 0; border-radius: 3px; overflow: hidden; display: flex; }
+.bar-fill { height: 100%; border-radius: 3px; }
+.bar-over-fill { height: 100%; background: #e05c5c; }
+
+.card-detail { display: none; padding: 10px 14px 14px; border-top: 1px solid #f0f0f0; }
+.card-detail.open { display: block; }
+.meal-grid { display: flex; gap: 8px; }
+.meal-col { flex: 1; min-width: 0; }
+.meal-time-label { font-size: 10px; font-weight: 700; color: #52b788; margin-bottom: 3px; }
+.item-list { margin: 0; padding: 0 0 0 12px; margin-bottom: 3px; }
+.item-list li { font-size: 11px; color: #333; margin-bottom: 1px; line-height: 1.5; }
+.meal-cal { font-size: 11px; font-weight: 700; color: #2d6a4f; }
+.meal-note { font-size: 10px; color: #888; margin-top: 2px; }
+.no-meal { font-size: 11px; color: #bbb; }
+.detail-edit-btn { margin-top: 10px; background: none; border: 1px solid #d0e8da; border-radius: 6px; padding: 5px 12px; font-size: 11px; color: #2d6a4f; cursor: pointer; width: 100%; }
+.empty { text-align: center; color: #aaa; padding: 40px 20px; font-size: 13px; }
+
+/* ===== WEEK VIEW ===== */
+.week-nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #fff; border-bottom: 1px solid #eee; }
+.week-nav-btn { background: none; border: 1px solid #d0e8da; border-radius: 6px; padding: 5px 14px; font-size: 13px; color: #2d6a4f; cursor: pointer; }
+.week-label { font-size: 13px; font-weight: 700; color: #1b4332; }
+.week-summary-box { margin: 12px 12px 0; background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.week-total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.week-total-label { font-size: 12px; color: #555; }
+.week-total-val { font-size: 18px; font-weight: 700; color: #2d6a4f; }
+.week-target { font-size: 11px; color: #888; }
+.week-days { margin: 10px 12px 0; }
+.week-day-row { background: #fff; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+.week-day-summary { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.week-day-left { display: flex; align-items: center; gap: 10px; }
+.week-day-name { font-size: 13px; font-weight: 700; color: #1b4332; min-width: 36px; }
+.week-day-name.gym { color: #52b788; }
+.week-day-bar-wrap { width: 100px; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; display: flex; }
+.week-day-right { font-size: 13px; font-weight: 700; color: #2d6a4f; min-width: 70px; text-align: right; }
+.week-day-right.over { color: #e05c5c; }
+.week-day-right.none { color: #bbb; font-weight: 400; }
+
+/* ===== CALENDAR VIEW ===== */
+.cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #fff; border-bottom: 1px solid #eee; }
+.cal-nav-btn { background: none; border: 1px solid #d0e8da; border-radius: 6px; padding: 5px 14px; font-size: 13px; color: #2d6a4f; cursor: pointer; }
+.cal-month-label { font-size: 15px; font-weight: 700; color: #1b4332; }
+.cal-wrap { padding: 12px; }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 4px; }
+.cal-wd { text-align: center; font-size: 11px; font-weight: 700; color: #888; padding: 4px 0; }
+.cal-wd.sun { color: #e05c5c; }
+.cal-wd.sat { color: #3a86d4; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-cell { border-radius: 8px; padding: 6px 4px; min-height: 52px; cursor: pointer; position: relative; transition: transform 0.1s; }
+.cal-cell:active { transform: scale(0.95); }
+.cal-cell.empty { background: transparent; cursor: default; }
+.cal-cell.no-data { background: #f0f0f0; }
+.cal-cell.ok { background: #d8f3dc; }
+.cal-cell.warn { background: #fff3cd; }
+.cal-cell.over { background: #fde8e8; }
+.cal-cell.today { box-shadow: 0 0 0 2px #2d6a4f; }
+.cal-date { font-size: 12px; font-weight: 700; color: #333; }
+.cal-date.sun { color: #e05c5c; }
+.cal-date.sat { color: #3a86d4; }
+.cal-cell.empty .cal-date { color: #ccc; }
+.cal-kcal { font-size: 10px; font-weight: 600; color: #2d6a4f; margin-top: 3px; }
+.cal-kcal.over { color: #c0392b; }
+.cal-kcal.none { color: #bbb; }
+.cal-gym { position: absolute; top: 4px; right: 4px; font-size: 8px; }
+.cal-legend { display: flex; gap: 10px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #555; }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+/* Modal */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); align-items: flex-end; justify-content: center; z-index: 100; }
+.overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 16px 16px 0 0; padding: 20px 16px 40px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-title { font-size: 16px; font-weight: 700; color: #1b4332; }
+.close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
+.meal-section { background: #f7faf8; border-radius: 8px; padding: 12px; margin-top: 12px; }
+.meal-section-title { font-size: 13px; font-weight: 700; color: #2d6a4f; margin-bottom: 8px; }
+label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; }
+input[type="text"], input[type="number"], input[type="date"], textarea {
+  width: 100%; border-radius: 7px; border: 1px solid #d4e8dc;
+  padding: 8px 10px; font-size: 14px; margin-bottom: 10px;
+  outline: none; font-family: inherit;
+}
+textarea { resize: vertical; }
+.calc-btn { width: 100%; background: #1b4332; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+.breakdown-box { background: #fff; border: 1px solid #d4e8dc; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+.breakdown-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+.breakdown-total { border-top: 2px solid #d4e8dc; border-bottom: none; margin-top: 4px; padding-top: 4px; font-weight: 700; }
+.breakdown-cal { color: #2d6a4f; font-weight: 600; }
+.save-btn { margin-top: 16px; width: 100%; background: #2d6a4f; color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.label-sub { color: #888; font-weight: 400; }
+
+/* Day detail modal */
+.day-detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); align-items: flex-end; justify-content: center; z-index: 100; }
+.day-detail-overlay.open { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="app-title">🥗 食事ダイアリー</div>
+    <div class="app-sub">目標：1日 1300 kcal</div>
+  </div>
+  <button class="add-btn" onclick="openModal()">＋ 記録を追加</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('day')">日別</div>
+  <div class="tab" onclick="switchTab('week')">週別</div>
+  <div class="tab" onclick="switchTab('cal')">カレンダー</div>
+</div>
+
+<div class="rules-row">
+  <span class="rule">🛢 油物控えめ</span>
+  <span class="rule">脂質 1食10g以下</span>
+  <span class="rule">タンパク質 1食20g以上</span>
+  <span class="rule">🍺 週2回・1〜2杯まで</span>
+  <span class="rule">1食 400kcal 前後</span>
+</div>
+
+<!-- DAY VIEW -->
+<div id="view-day" class="view active">
+  <div class="list" id="dayList"></div>
+</div>
+
+<!-- WEEK VIEW -->
+<div id="view-week" class="view">
+  <div class="week-nav">
+    <button class="week-nav-btn" onclick="weekOffset--; renderWeek()">＜ 前週</button>
+    <span class="week-label" id="weekLabel"></span>
+    <button class="week-nav-btn" onclick="weekOffset++; renderWeek()">次週 ＞</button>
+  </div>
+  <div class="week-summary-box">
+    <div class="week-total-row">
+      <span class="week-total-label">今週の合計</span>
+      <span class="week-total-val" id="weekTotal">— kcal</span>
+    </div>
+    <div class="week-target" id="weekTarget"></div>
+  </div>
+  <div class="week-days" id="weekDays"></div>
+</div>
+
+<!-- CALENDAR VIEW -->
+<div id="view-cal" class="view">
+  <div class="cal-nav">
+    <button class="cal-nav-btn" onclick="calOffset--; renderCal()">＜</button>
+    <span class="cal-month-label" id="calMonthLabel"></span>
+    <button class="cal-nav-btn" onclick="calOffset++; renderCal()">＞</button>
+  </div>
+  <div class="cal-wrap">
+    <div class="cal-weekdays">
+      <div class="cal-wd sun">日</div>
+      <div class="cal-wd">月</div>
+      <div class="cal-wd">火</div>
+      <div class="cal-wd">水</div>
+      <div class="cal-wd thu">木🏋</div>
+      <div class="cal-wd">金</div>
+      <div class="cal-wd sat">土</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#d8f3dc"></div>目標内</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fff3cd"></div>少しオーバー</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fde8e8"></div>オーバー</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f0f0f0"></div>未記録</div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">食事を記録する</span>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <label>日付</label>
+    <input type="date" id="inputDate">
+    <div id="mealForms"></div>
+    <button class="save-btn" onclick="saveEntry()">💾 保存する</button>
+  </div>
+</div>
+
+<script>
+const TARGET = 1300;
+const MEAL_TIMES = ["朝","昼","夜"];
+
+const CALORIE_DB = {
+  "ご飯":252,"ごはん":252,"白米":252,"ご飯（小）":168,"ご飯（大）":336,
+  "おにぎり":170,"梅おにぎり":160,"梅昆布おにぎり":165,"しそご飯":220,
+  "食パン":160,"食パン1枚":160,"トースト":170,"パン":160,
+  "うどん":240,"そば":230,"ラーメン":480,"パスタ":320,
+  "ソーセージ":60,"ソーセージ3本":180,"ウインナー":60,"ウインナー3本":180,
+  "目玉焼き":90,"目玉焼き2個":180,"卵":75,"ゆで卵":75,"スクランブルエッグ":100,
+  "焼き魚":150,"鮭":130,"さんま":210,"アジ":120,"サバ":200,
+  "ハンバーグ":280,"から揚げ":300,"唐揚げ":300,"チキン":200,
+  "酢豚":350,"麻婆豆腐":250,"チャーシュー":280,
+  "豆腐":70,"納豆":100,"卵焼き":120,
+  "サラダ":30,"野菜サラダ":30,"シーザーサラダ":150,
+  "味噌汁":40,"みそ汁":40,"なめこの味噌汁":45,"豆腐の味噌汁":55,
+  "スープ":50,"コンソメスープ":30,
+  "ビール":150,"ハイボール":90,"ジャスミンハイ":100,"チューハイ":120,
+  "ワイン":90,"日本酒":190,"焼酎":140,
+  "ダイエットドリンク":10,"ゼロカロリードリンク":0,
+  "コーヒー":8,"お茶":0,"水":0,"牛乳":130,"オレンジジュース":110,
+  "タピオカドリンク":380,"タピオカ":380,"ミルクティー":200,
+  "アイス":180,"ケーキ":320,"チョコレート":250,"クッキー":200,
+  "ヨーグルト":90,"バナナ":90,"りんご":60,"みかん":45,
+  "カレー":650,"カレーライス":650,"チャーハン":500,"オムライス":550,
+  "親子丼":580,"牛丼":650,"天丼":700,"カツ丼":750,
+  "餃子":250,"シュウマイ":200,"春巻き":220,
+  "ピザ":600,"ハンバーガー":500,"フライドポテト":350,
+  "寿司":350,"刺身":150,
+};
+
+function lookupCal(itemsText) {
+  const lines = itemsText.split("\n").map(s=>s.trim()).filter(Boolean);
+  let total = 0;
+  const breakdown = [];
+  for (const line of lines) {
+    if (line.startsWith("※")) { breakdown.push({item:line,cal:0}); continue; }
+    let cal = CALORIE_DB[line];
+    if (cal === undefined) {
+      const key = Object.keys(CALORIE_DB).find(k => line.includes(k) || k.includes(line));
+      cal = key ? CALORIE_DB[key] : 100;
+    }
+    breakdown.push({item:line, cal});
+    total += cal;
+  }
+  return {total_cal: total, breakdown};
+}
+
+const DEFAULT_DATA = [
+  { date:"2026-06-12", meals:[
+    {time:"朝", items:["梅昆布おにぎり","ソーセージ3本"], cal:370},
+    {time:"昼", items:["ダイエットドリンク"], cal:30},
+    {time:"夜", items:["ビール","ジャスミンハイ","ハイボール","※カラオケで消費"], cal:420, note:"アルコール3杯 / カラオケで運動消費あり"},
+  ]},
+  { date:"2026-06-13", meals:[
+    {time:"朝", items:["食パン1枚","ソーセージ3本"], cal:340},
+    {time:"昼", items:["ダイエットドリンク"], cal:30},
+    {time:"夜", items:["ハンバーグ","ご飯（小）","なめこの味噌汁","サラダ"], cal:590},
+  ]},
+  { date:"2026-06-14", meals:[
+    {time:"朝", items:["しそご飯","目玉焼き2個","ソーセージ3本","サラダ"], cal:490},
+    {time:"昼", items:["酢豚","ご飯","タピオカドリンク"], cal:760},
+    {time:"夜", items:["ダイエットドリンク"], cal:30},
+  ]},
+];
+
+function loadData() {
+  try { const s = localStorage.getItem("diet-diary-v1"); return s ? JSON.parse(s) : DEFAULT_DATA; }
+  catch { return DEFAULT_DATA; }
+}
+function saveData(data) { localStorage.setItem("diet-diary-v1", JSON.stringify(data)); }
+
+let days = loadData();
+let editingDate = null;
+let weekOffset = 0;
+let calOffset = 0;
+let currentTab = 'day';
+
+// 木曜起算の週開始日を返す
+function getWeekStart(offset) {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const day = now.getDay(); // 0=Sun,1=Mon,...,4=Thu
+  // 直近の木曜日（過去方向）を求める
+  // 木=0, 金=1, 土=2, 日=3, 月=4, 火=5, 水=6 の順で起算
+  const diffToThurs = (day + 3) % 7; // 木曜からの日数（木=0,金=1,...水=6）
+  const thisThurs = new Date(now);
+  thisThurs.setDate(now.getDate() - diffToThurs + offset * 7);
+  return thisThurs;
+}
+
+function dateStr(d) {
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function getLabel(date) {
+  const weekdays = ["日","月","火","水","木","金","土"];
+  const d = new Date(date + "T00:00:00");
+  const [,mo,day] = date.split("-");
+  return `${parseInt(mo)}/${parseInt(day)} (${weekdays[d.getDay()]})`;
+}
+
+function totalCal(meals) { return meals.reduce((s,m) => s+(m.cal||0), 0); }
+
+function getDayData(dateS) { return days.find(d => d.date === dateS); }
+
+function badgeHtml(total) {
+  const diff = total - TARGET;
+  if (diff <= 0) return `<span class="badge badge-ok">✓ 目標内</span>`;
+  if (diff <= 150) return `<span class="badge badge-warn">△ +${diff}</span>`;
+  return `<span class="badge badge-over">✕ +${diff}</span>`;
+}
+
+function barHtml(total, extraClass='') {
+  const pct = Math.min((total/TARGET)*100, 100);
+  const overPct = total > TARGET ? Math.min(((total-TARGET)/TARGET)*100, 30) : 0;
+  const color = total <= TARGET ? "#4caf82" : total <= TARGET+150 ? "#f0a500" : "#e05c5c";
+  return `<div class="bar-wrap ${extraClass}">
+    <div class="bar-fill" style="width:${pct}%;background:${color}"></div>
+    ${overPct>0?`<div class="bar-over-fill" style="width:${overPct}%"></div>`:''}
+  </div>`;
+}
+
+// ===== TAB =====
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['day','week','cal'][i] === tab);
+  });
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  if (tab === 'week') renderWeek();
+  if (tab === 'cal') renderCal();
+}
+
+// ===== DAY VIEW =====
+function renderDay() {
+  const list = document.getElementById("dayList");
+  const sorted = [...days].sort((a,b) => b.date.localeCompare(a.date));
+  if (!sorted.length) { list.innerHTML = `<div class="empty">まだ記録がありません<br>「＋ 記録を追加」から始めましょう</div>`; return; }
+  list.innerHTML = sorted.map(day => {
+    const total = totalCal(day.meals);
+    const cols = MEAL_TIMES.map(t => {
+      const meal = day.meals.find(m => m.time === t);
+      if (!meal) return `<div class="meal-col"><div class="meal-time-label">${t}</div><div class="no-meal">—</div></div>`;
+      const items = meal.items.map(i => `<li>${i}</li>`).join("");
+      const note = meal.note ? `<div class="meal-note">📝 ${meal.note}</div>` : "";
+      return `<div class="meal-col">
+        <div class="meal-time-label">${t}</div>
+        <ul class="item-list">${items}</ul>
+        <div class="meal-cal">${meal.cal} kcal</div>${note}
+      </div>`;
+    }).join("");
+    return `<div class="card">
+      <div class="card-summary" onclick="toggleDetail('${day.date}')">
+        <span class="date-label">${getLabel(day.date)}</span>
+        <div class="summary-right">
+          <span class="total-kcal">${total} kcal</span>
+          ${badgeHtml(total)}
+          <span class="chevron" id="chev-${day.date}">▼</span>
+        </div>
+      </div>
+      ${barHtml(total)}
+      <div class="card-detail" id="detail-${day.date}">
+        <div class="meal-grid">${cols}</div>
+        <button class="detail-edit-btn" onclick="openModal('${day.date}')">✏️ この日を編集</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function toggleDetail(date) {
+  const detail = document.getElementById(`detail-${date}`);
+  const chev = document.getElementById(`chev-${date}`);
+  const open = detail.classList.toggle('open');
+  chev.classList.toggle('open', open);
+}
+
+// ===== WEEK VIEW =====
+function renderWeek() {
+  const start = getWeekStart(weekOffset);
+  const end = new Date(start); end.setDate(start.getDate() + 6);
+  const pad = n => String(n).padStart(2,"0");
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById("weekLabel").textContent = `${fmt(start)}（木）〜${fmt(end)}（水）`;
+
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    weekDays.push(d);
+  }
+  const weekNames = ["木","金","土","日","月","火","水"];
+
+  let weekTotal = 0;
+  const dayRows = weekDays.map((d, i) => {
+    const ds = dateStr(d);
+    const data = getDayData(ds);
+    const total = data ? totalCal(data.meals) : 0;
+    if (data) weekTotal += total;
+    const isGym = i === 0; // 木曜
+    const isToday = ds === dateStr(new Date());
+    const pct = data ? Math.min((total/TARGET)*100, 100) : 0;
+    const color = !data ? "#ddd" : total <= TARGET ? "#4caf82" : total <= TARGET+150 ? "#f0a500" : "#e05c5c";
+    const rightClass = !data ? "none" : total > TARGET ? "over" : "";
+    const todayStyle = isToday ? "border-left: 3px solid #2d6a4f;" : "";
+    return `<div class="week-day-row" style="${todayStyle}">
+      <div class="week-day-summary" onclick="${data ? `openModal('${ds}')` : `openModal(null,'${ds}')`}">
+        <div class="week-day-left">
+          <span class="week-day-name${isGym?' gym':''}">${weekNames[i]}${isGym?'🏋':''}</span>
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:3px">${fmt(d)}</div>
+            <div class="week-day-bar-wrap">
+              <div class="bar-fill" style="width:${pct}%;background:${color}"></div>
+            </div>
+          </div>
+        </div>
+        <span class="week-day-right ${rightClass}">${data ? total+' kcal' : '未記録'}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("weekTotal").textContent = weekTotal ? `${weekTotal} kcal` : "— kcal";
+  const weekTarget = TARGET * 7;
+  const diff = weekTotal - weekTarget;
+  document.getElementById("weekTarget").textContent = weekTotal
+    ? `週間目標 ${weekTarget} kcal に対して ${diff <= 0 ? `あと ${Math.abs(diff)} kcal` : `+${diff} kcal オーバー`}`
+    : `週間目標：${weekTarget} kcal`;
+  document.getElementById("weekDays").innerHTML = dayRows;
+}
+
+// ===== CALENDAR VIEW =====
+function renderCal() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + calOffset;
+  const d = new Date(year, month, 1);
+  document.getElementById("calMonthLabel").textContent = `${d.getFullYear()}年${d.getMonth()+1}月`;
+
+  const firstDay = d.getDay(); // 0=Sun
+  const daysInMonth = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  const todayStr = dateStr(new Date());
+
+  let cells = '';
+  for (let i = 0; i < firstDay; i++) cells += `<div class="cal-cell empty"></div>`;
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const data = getDayData(ds);
+    const total = data ? totalCal(data.meals) : 0;
+    const dow = new Date(ds + 'T00:00:00').getDay();
+    let cls = 'no-data';
+    let kcalHtml = `<div class="cal-kcal none">—</div>`;
+    if (data) {
+      cls = total <= TARGET ? 'ok' : total <= TARGET+150 ? 'warn' : 'over';
+      kcalHtml = `<div class="cal-kcal${total>TARGET?' over':''}">${total}</div>`;
+    }
+    const todayCls = ds === todayStr ? ' today' : '';
+    const isGym = dow === 4; // 木曜
+    const gymBadge = isGym ? `<span class="cal-gym">🏋</span>` : '';
+    const dateCls = dow === 0 ? ' sun' : dow === 6 ? ' sat' : '';
+    cells += `<div class="cal-cell ${cls}${todayCls}" onclick="cellClick('${ds}')">
+      ${gymBadge}
+      <div class="cal-date${dateCls}">${day}</div>
+      ${kcalHtml}
+    </div>`;
+  }
+  document.getElementById("calGrid").innerHTML = cells;
+}
+
+function cellClick(ds) {
+  const data = getDayData(ds);
+  if (data) openModal(ds);
+  else openModal(null, ds);
+}
+
+// ===== MODAL =====
+function openModal(date, prefillDate) {
+  editingDate = date || null;
+  const today = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  const todayStr = prefillDate || `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  document.getElementById("modalTitle").textContent = date ? "記録を編集" : "食事を記録する";
+  document.getElementById("inputDate").value = date || todayStr;
+  const existing = date ? days.find(d => d.date === date) : null;
+  renderMealForms(existing);
+  document.getElementById("overlay").classList.add("open");
+}
+
+function closeModal() { document.getElementById("overlay").classList.remove("open"); }
+
+function renderMealForms(existing) {
+  document.getElementById("mealForms").innerHTML = MEAL_TIMES.map(t => {
+    const meal = existing?.meals.find(m => m.time === t);
+    return `<div class="meal-section">
+      <div class="meal-section-title">${t}ごはん</div>
+      <label>メニュー（1行1品）</label>
+      <textarea id="items-${t}" rows="3" placeholder="例：\nご飯（小）\n焼き魚">${meal ? meal.items.join("\n") : ""}</textarea>
+      <button class="calc-btn" onclick="calcCal('${t}')">🔢 カロリーを自動計算</button>
+      <div id="breakdown-${t}"></div>
+      <label>カロリー (kcal) <span class="label-sub">— 自動入力後に手動修正も可</span></label>
+      <input type="number" id="cal-${t}" value="${meal?.cal||''}" placeholder="例：400">
+      <label>メモ（任意）</label>
+      <input type="text" id="note-${t}" value="${meal?.note||''}" placeholder="例：外食、お酒ありなど">
+    </div>`;
+  }).join("");
+}
+
+function calcCal(t) {
+  const text = document.getElementById(`items-${t}`).value.trim();
+  if (!text) return;
+  const result = lookupCal(text);
+  document.getElementById(`cal-${t}`).value = result.total_cal;
+  const rows = result.breakdown.map(b =>
+    `<div class="breakdown-row"><span>${b.item}</span><span class="breakdown-cal">${b.cal} kcal</span></div>`
+  ).join("");
+  const total = `<div class="breakdown-row breakdown-total"><span>合計</span><span class="breakdown-cal" style="font-size:14px">${result.total_cal} kcal</span></div>`;
+  document.getElementById(`breakdown-${t}`).innerHTML = `<div class="breakdown-box">${rows}${total}</div>`;
+}
+
+function saveEntry() {
+  const date = document.getElementById("inputDate").value;
+  if (!date) { alert("日付を入力してください"); return; }
+  const meals = MEAL_TIMES.map(t => {
+    const items = document.getElementById(`items-${t}`).value.trim();
+    const cal = parseInt(document.getElementById(`cal-${t}`).value) || 0;
+    const note = document.getElementById(`note-${t}`).value.trim();
+    if (!items) return null;
+    return { time: t, items: items.split("\n").map(s=>s.trim()).filter(Boolean), cal, note };
+  }).filter(Boolean);
+
+  const idx = days.findIndex(d => d.date === date);
+  if (idx >= 0) days[idx] = { date, meals };
+  else days.push({ date, meals });
+
+  saveData(days);
+  closeModal();
+  renderDay();
+  if (currentTab === 'week') renderWeek();
+  if (currentTab === 'cal') renderCal();
+}
+
+// Init
+renderDay();
+</script>
+</body>
+</html>
