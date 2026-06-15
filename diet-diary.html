@@ -129,6 +129,7 @@ textarea { resize: vertical; }
 .breakdown-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
 .breakdown-total { border-top: 2px solid #d4e8dc; border-bottom: none; margin-top: 4px; padding-top: 4px; font-weight: 700; }
 .breakdown-cal { color: #2d6a4f; font-weight: 600; }
+.breakdown-cal-input:focus { outline: none; border-color: #52b788 !important; }
 .save-btn { margin-top: 16px; width: 100%; background: #2d6a4f; color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; }
 .label-sub { color: #888; font-weight: 400; }
 
@@ -244,7 +245,7 @@ const CALORIE_DB = {
   "スープ":50,"コンソメスープ":30,
   "ビール":150,"ハイボール":90,"ジャスミンハイ":100,"チューハイ":120,
   "ワイン":90,"日本酒":190,"焼酎":140,
-  "ダイエットドリンク":10,"ゼロカロリードリンク":0,
+  "ダイエットドリンク":194,"ゼロカロリードリンク":0,
   "コーヒー":8,"お茶":0,"水":0,"牛乳":130,"オレンジジュース":110,
   "タピオカドリンク":380,"タピオカ":380,"ミルクティー":200,
   "アイス":180,"ケーキ":320,"チョコレート":250,"クッキー":200,
@@ -536,12 +537,39 @@ function calcCal(t) {
   const text = document.getElementById(`items-${t}`).value.trim();
   if (!text) return;
   const result = lookupCal(text);
-  document.getElementById(`cal-${t}`).value = result.total_cal;
-  const rows = result.breakdown.map(b =>
-    `<div class="breakdown-row"><span>${b.item}</span><span class="breakdown-cal">${b.cal} kcal</span></div>`
+  renderBreakdown(t, result.breakdown);
+}
+
+function renderBreakdown(t, breakdown) {
+  const rows = breakdown.map((b, i) =>
+    `<div class="breakdown-row">
+      <span class="breakdown-item">${b.item}</span>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input type="number" class="breakdown-cal-input" value="${b.cal}"
+          onchange="updateBreakdownTotal('${t}')"
+          data-index="${i}"
+          style="width:64px;border:1px solid #d4e8dc;border-radius:5px;padding:2px 5px;font-size:12px;text-align:right;color:#2d6a4f;font-weight:600;">
+        <span style="font-size:11px;color:#888">kcal</span>
+      </div>
+    </div>`
   ).join("");
-  const total = `<div class="breakdown-row breakdown-total"><span>合計</span><span class="breakdown-cal" style="font-size:14px">${result.total_cal} kcal</span></div>`;
-  document.getElementById(`breakdown-${t}`).innerHTML = `<div class="breakdown-box">${rows}${total}</div>`;
+  const totalVal = breakdown.reduce((s,b)=>s+b.cal,0);
+  const totalRow = `<div class="breakdown-row breakdown-total" id="bd-total-${t}">
+    <span>合計</span>
+    <span class="breakdown-cal" style="font-size:14px" id="bd-total-val-${t}">${totalVal} kcal</span>
+  </div>`;
+  document.getElementById(`breakdown-${t}`).innerHTML = `<div class="breakdown-box">${rows}${totalRow}</div>`;
+  document.getElementById(`cal-${t}`).value = totalVal;
+  // store breakdown in data attribute for total recalc
+  document.getElementById(`breakdown-${t}`).dataset.breakdown = JSON.stringify(breakdown);
+}
+
+function updateBreakdownTotal(t) {
+  const inputs = document.getElementById(`breakdown-${t}`).querySelectorAll('.breakdown-cal-input');
+  let total = 0;
+  inputs.forEach(inp => { total += parseInt(inp.value)||0; });
+  document.getElementById(`bd-total-val-${t}`).textContent = total + ' kcal';
+  document.getElementById(`cal-${t}`).value = total;
 }
 
 function saveEntry() {
